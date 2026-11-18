@@ -1,0 +1,82 @@
+name: TruckPulse CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  cpp-build-and-test:
+    name: C++17 Core Build & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cd cpp
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build C++ Targets
+        run: |
+          cd cpp
+          cmake --build build -j4
+
+      - name: Run C++ Test Suite
+        run: |
+          cd cpp/build
+          ctest --output-on-failure
+
+  python-backend-test:
+    name: Python FastAPI Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build C++ Subsystem (Needed for Subprocess Bridge)
+        run: |
+          cd cpp
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j4
+
+      - name: Install Python Dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        run: |
+          cd backend
+          export PYTHONPATH=$(pwd)
+          python -m pytest tests -v
+
+  frontend-build:
+    name: React Dashboard Production Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build Production Bundle
+        run: |
+          cd frontend
+          npm run build
